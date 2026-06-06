@@ -63,6 +63,11 @@ async def start_agent(chat_id: uuid.UUID, ticket_id: str) -> None:
                 runner=runner,
             )
 
+            logger.debug(
+                "TicketContext built chat_id=%s ticket_id=%s host=%s port=%s description=%r",
+                ctx.chat_id, ctx.ticket_id, ctx.host, ctx.port, ctx.description,
+            )
+
             prompt = (
                 f"Ticket #{ticket.id}: {ticket.title}\n\n"
                 f"Customer: {ticket.customer_name}\n"
