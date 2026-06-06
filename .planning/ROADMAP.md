@@ -164,7 +164,7 @@ Note: Phases 2 and 3 can run in parallel lanes (ERP client is independent of saf
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Repo Foundation | 1/3 | In Progress|  |
+| 1. Repo Foundation | 2/3 | In Progress|  |
 | 2. ERP Client + Ticket Routes | 0/TBD | Not started | - |
 | 3. Safety Layer + Run Store | 0/TBD | Not started | - |
 | 4. SSH Executor | 0/TBD | Not started | - |
