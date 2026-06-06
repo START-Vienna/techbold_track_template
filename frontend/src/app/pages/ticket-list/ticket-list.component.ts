@@ -2,12 +2,12 @@ import { Component } from '@angular/core';
 import { NgFor } from '@angular/common';
 
 @Component({
-  selector: 'chat-list',
+  selector: 'ticket-list',
   standalone: true,
-  templateUrl: './chat-list.component.html',
-  styleUrls: ['./chat-list.component.css'],
+  templateUrl: './ticket-list.component.html',
+  styleUrls: ['./ticket-list.component.css'],
 })
-export class ChatListComponent {
+export class TicketListComponent {
   items = [
     {
       id: 1,

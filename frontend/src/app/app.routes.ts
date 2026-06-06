@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 import { TicketDetailviewComponent } from './pages/ticket-detailview/ticket-detailview.component';
-import { ChatListComponent } from './pages/chat-list/chat-list.component';
+import { TicketListComponent } from './pages/ticket-list/ticket-list.component';
 import { KanbanBoardComponent } from './pages/kanban-board/kanban-board.component';
 
 export const routes: Routes = [
@@ -17,6 +17,6 @@ export const routes: Routes = [
   {
     path: '**',
     title: 'List tickets',
-    component: ChatListComponent,
+    component: TicketListComponent,
   },
 ];
