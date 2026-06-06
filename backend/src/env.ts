@@ -29,20 +29,26 @@ export function parseEnv(raw: Record<string, string | undefined>): EnvConfig {
   return result.data;
 }
 
-function loadEnv(): EnvConfig {
+let cachedEnv: EnvConfig | undefined;
+
+// Lazily parse process.env on first access so importing this module has no
+// side effects — pure helpers (parseEnv/resolveClientMode/isMockMode) and the
+// test suite can run without a fully populated environment. Fails fast with a
+// readable message the first time the real config is actually needed.
+export function getEnv(): EnvConfig {
+  if (cachedEnv) return cachedEnv;
   try {
-    return parseEnv(process.env as Record<string, string | undefined>);
+    cachedEnv = parseEnv(process.env as Record<string, string | undefined>);
+    return cachedEnv;
   } catch (err) {
     console.error((err as Error).message);
     process.exit(1);
   }
 }
 
-export const env: EnvConfig = loadEnv();
-
 export function resolveClientMode(
   service: 'phoenix' | 'ssh' | 'llm',
-  config: EnvConfig = env,
+  config: EnvConfig = getEnv(),
 ): 'mock' | 'real' {
   if (config.MOCK_MODE) return 'mock';
   if (service === 'phoenix' && config.MOCK_PHOENIX) return 'mock';
@@ -51,7 +57,7 @@ export function resolveClientMode(
   return 'real';
 }
 
-export function isMockMode(config: EnvConfig = env): boolean {
+export function isMockMode(config: EnvConfig = getEnv()): boolean {
   return (
     config.MOCK_MODE ||
     config.MOCK_PHOENIX ||
