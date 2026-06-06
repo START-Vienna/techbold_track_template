@@ -38,6 +38,19 @@
   border-radius: 50%;
   background-color: #00d964;
   flex-shrink: 0;
+  animation: pulse-active 2s ease-in-out infinite;
+}
+
+@keyframes pulse-active {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(0, 217, 100, 0.7);
+  }
+  50% {
+    opacity: 0.8;
+    box-shadow: 0 0 0 6px rgba(0, 217, 100, 0);
+  }
 }
 
 .active {

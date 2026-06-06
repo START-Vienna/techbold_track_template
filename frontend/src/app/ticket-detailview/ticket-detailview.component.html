@@ -1,5 +1,13 @@
 <div class="container">
-  <div class="left-panel">
+  <div class="left-panel" [class.collapsed]="leftPanelCollapsed">
+    <button
+      class="toggle-panel-button"
+      (click)="toggleLeftPanel()"
+      [title]="leftPanelCollapsed ? 'Expand' : 'Collapse'"
+    >
+      {{ leftPanelCollapsed ? '→' : '←' }}
+    </button>
+
     <p class="company-name">Nordlicht Logistik GmbH</p>
 
     <h1 class="ticket-title">Status API intermittently unavailable</h1>
@@ -64,7 +72,13 @@
     </div>
   </div>
 
-  <div class="right-panel">
+  <div class="right-panel" [class.collapsed-left]="leftPanelCollapsed">
+    @if (leftPanelCollapsed && !showLogs) {
+      <button class="expand-panel-button" (click)="toggleLeftPanel()" title="Expand panel">
+        ← Open
+      </button>
+    }
+
     @if (!showLogs) {
       @if (activeChat === null) {
         <app-chat-selection

@@ -1,0 +1,55 @@
+@if (execution) {
+  <div class="execution-container" [ngClass]="getStatusClass(execution.status)">
+    <div class="execution-header">
+      <div class="execution-type-badge">
+        <span class="type-icon">≥</span>
+        <span class="type-label">{{ execution.type }}</span>
+      </div>
+
+      <div class="execution-meta">
+        <span class="status-indicator" [ngClass]="'status-' + execution.status">
+          {{ getStatusIcon(execution.status) }}
+        </span>
+        @if (execution.timestamp) {
+          <span class="timestamp">{{ execution.timestamp }}</span>
+        }
+      </div>
+    </div>
+
+    @if (execution.steps && execution.steps.length > 0) {
+      <div class="execution-steps">
+        @for (step of execution.steps; track step.id) {
+          <div class="execution-step" [ngClass]="getStepStatusClass(step.status)">
+            <div class="step-info">
+              <span class="step-name">{{ step.name }}</span>
+            </div>
+            <div class="step-progress-bar">
+              @if (step.status === 'running') {
+                <div
+                  class="progress-fill running"
+                  [style.width]="(step.progress || 30) + '%'"
+                ></div>
+              } @else if (step.status === 'success') {
+                <div class="progress-fill success" style="width: 100%"></div>
+              } @else if (step.status === 'error') {
+                <div class="progress-fill error" style="width: 100%"></div>
+              } @else {
+                <div class="progress-fill pending" style="width: 0%"></div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+    <div class="execution-command">
+      <code>{{ execution.command }}</code>
+    </div>
+
+    @if (execution.output) {
+      <div class="execution-output">
+        <pre>{{ execution.output }}</pre>
+      </div>
+    }
+  </div>
+}
