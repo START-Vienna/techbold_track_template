@@ -4,12 +4,12 @@ import { ChatList } from './pages/chat-list/chat-list';
 
 export const routes: Routes = [
   {
+    path: 'ticket-detail',
+    component: TicketDetailviewComponent,
+  },
+  {
     path: '**',
     title: 'List chats',
     component: ChatList,
-  },
-  {
-    path: 'ticket-detail',
-    component: TicketDetailviewComponent,
   },
 ];
