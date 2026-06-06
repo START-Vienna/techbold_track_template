@@ -18,9 +18,9 @@ from sse_starlette.sse import EventSourceResponse
 from ...agent.approval_gate import approval_gate
 from ...agent.event_bus import agent_event_bus
 from ...agent.orchestrator import start_agent
-from ...db.models import Chat, ToolCall
+from ...db.models import Chat, ChatMessage, ToolCall
 from ...db.session import get_db
-from .schemas import ApprovalRequest, ChatResponse, StartChatRequest, ToolCallResponse, ChatListResponse
+from .schemas import ApprovalRequest, ChatMessageSchema, ChatResponse, StartChatRequest, ToolCallResponse, ChatListResponse
 
 router = APIRouter(prefix="/chats", tags=["chats"])
 
@@ -110,6 +110,24 @@ async def list_tool_calls(
     )
     tool_calls = result.scalars().all()
     return [ToolCallResponse.model_validate(tc) for tc in tool_calls]
+
+
+@router.get(
+    "/{chat_id}/messages",
+    response_model=list[ChatMessageSchema],
+    summary="List messages for a chat",
+    description="Returns all persisted messages for a chat ordered by sequence ascending.",
+)
+async def list_messages(
+    chat_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+) -> list[ChatMessageSchema]:
+    result = await db.execute(
+        select(ChatMessage)
+        .where(ChatMessage.chat_id == chat_id)
+        .order_by(ChatMessage.sequence)
+    )
+    return [ChatMessageSchema.model_validate(m) for m in result.scalars().all()]
 
 
 @router.patch(

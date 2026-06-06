@@ -15,6 +15,18 @@ from httpx import AsyncClient
 # ---------------------------------------------------------------------------
 
 
+def _make_message_row(**overrides):
+    """Build a plain object that quacks like a ChatMessage ORM row."""
+    obj = MagicMock()
+    obj.id = overrides.get("id", uuid.uuid4())
+    obj.chat_id = overrides.get("chat_id", uuid.uuid4())
+    obj.sequence = overrides.get("sequence", 0)
+    obj.role = overrides.get("role", "assistant")
+    obj.content = overrides.get("content", "Hello")
+    obj.created_at = overrides.get("created_at", datetime(2026, 6, 7, 10, 0, tzinfo=timezone.utc))
+    return obj
+
+
 def _make_chat_row(**overrides):
     """Build a plain object that quacks like a Chat ORM row."""
     obj = MagicMock()
@@ -150,3 +162,89 @@ async def test_list_chats_filter_returns_matching_chats(
     body = resp.json()
     assert body["count"] == 1
     assert body["chats"][0]["ticket_id"] == "7001"
+
+
+# ---------------------------------------------------------------------------
+# GET /api/chats/{chat_id}/messages
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.anyio
+async def test_list_messages_returns_messages_in_order(
+    client_with_db: AsyncClient,
+    mock_db: AsyncMock,
+) -> None:
+    """Messages are returned in sequence order."""
+    chat_id = uuid.uuid4()
+    rows = [
+        _make_message_row(chat_id=chat_id, sequence=0, role="user", content="Hello"),
+        _make_message_row(chat_id=chat_id, sequence=1, role="assistant", content="Hi there"),
+    ]
+    _setup_db_result(mock_db, rows)
+
+    resp = await client_with_db.get(f"/api/chats/{chat_id}/messages")
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(body) == 2
+    assert body[0]["sequence"] == 0
+    assert body[1]["sequence"] == 1
+
+
+@pytest.mark.anyio
+async def test_list_messages_empty(
+    client_with_db: AsyncClient,
+    mock_db: AsyncMock,
+) -> None:
+    """No messages returns an empty list."""
+    _setup_db_result(mock_db, [])
+
+    resp = await client_with_db.get(f"/api/chats/{uuid.uuid4()}/messages")
+
+    assert resp.status_code == 200
+    assert resp.json() == []
+
+
+@pytest.mark.anyio
+async def test_list_messages_response_shape(
+    client_with_db: AsyncClient,
+    mock_db: AsyncMock,
+) -> None:
+    """Each message contains exactly the expected fields."""
+    _setup_db_result(mock_db, [_make_message_row()])
+
+    resp = await client_with_db.get(f"/api/chats/{uuid.uuid4()}/messages")
+
+    message = resp.json()[0]
+    assert set(message.keys()) == {"id", "sequence", "role", "content", "created_at"}
+
+
+@pytest.mark.anyio
+async def test_list_messages_field_values(
+    client_with_db: AsyncClient,
+    mock_db: AsyncMock,
+) -> None:
+    """Message fields are serialised with correct values."""
+    msg_id = uuid.uuid4()
+    _setup_db_result(mock_db, [
+        _make_message_row(id=msg_id, sequence=3, role="tool", content='{"exit_code": 0}')
+    ])
+
+    resp = await client_with_db.get(f"/api/chats/{uuid.uuid4()}/messages")
+
+    message = resp.json()[0]
+    assert message["id"] == str(msg_id)
+    assert message["sequence"] == 3
+    assert message["role"] == "tool"
+    assert message["content"] == '{"exit_code": 0}'
+
+
+@pytest.mark.anyio
+async def test_list_messages_invalid_chat_id_returns_422(
+    client_with_db: AsyncClient,
+    mock_db: AsyncMock,
+) -> None:
+    """A non-UUID chat_id path parameter returns 422."""
+    resp = await client_with_db.get("/api/chats/not-a-uuid/messages")
+
+    assert resp.status_code == 422
