@@ -18,12 +18,11 @@ services:
       start_period: 10s
 
   backend:
+    container_name: backend
     build: ./backend
     env_file:
       - path: .env
         required: false   # copy .env.example -> .env; the stack still starts without it
-    ports:
-      - "8000:8000"
     volumes:
       # Your SSH private key(s). Put your .pem in ./keys (git-ignored).
       - ./keys:/keys:ro
@@ -33,15 +32,24 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    networks:
+      - techbold
 
   frontend:
-    build: ./frontend
-    environment:
-      VITE_API_BASE: http://localhost:8000
+    container_name: frontend
+    build:
+      context: frontend
+      dockerfile: src/docker/Dockerfile
     ports:
-      - "5173:5173"
+      - "80:80"
     depends_on:
       - backend
 
 volumes:
   postgres_data:
+    networks:
+      - techbold
+
+networks:
+  techbold:
+    driver: bridge
