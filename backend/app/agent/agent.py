@@ -6,6 +6,8 @@ from dataclasses import dataclass
 
 from pydantic_ai import Agent, RunContext
 
+from ..config import get_settings
+from ..ssh.resolver import resolve_ssh_key
 from ..ssh.runner import FabricSSHRunner, SSHCommandBlockedError, SSHConnectionError, SSHResult
 
 logger = logging.getLogger(__name__)
@@ -78,6 +80,25 @@ def get_ticket_context(ctx: RunContext[TicketContext]) -> dict:
         "port": deps.port,
         "description": deps.description,
     }
+
+
+def build_runner_for_customer(
+    customer_id: int,
+    host: str,
+    port: int,
+    username: str,
+    ticket_id: int,
+) -> FabricSSHRunner:
+    """Create a FabricSSHRunner with the correct per-customer SSH key."""
+    settings = get_settings()
+    key_path = resolve_ssh_key(customer_id, keys_dir=settings.ssh_keys_dir)
+    return FabricSSHRunner(
+        host=host,
+        port=port,
+        username=username,
+        key_path=key_path,
+        ticket_id=ticket_id,
+    )
 
 
 async def start_agent(chat_id: uuid.UUID, ticket_id: str) -> None:
