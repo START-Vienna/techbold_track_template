@@ -5,6 +5,8 @@ import uuid
 from dataclasses import dataclass
 
 from pydantic_ai import Agent, RunContext
+from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.providers.openai import OpenAIProvider
 
 from ..config import get_settings
 from ..ssh.resolver import resolve_ssh_key
@@ -65,11 +67,17 @@ After completing the diagnosis and fix, provide a detailed summary covering:
 - How you validated the fix
 """
 
-autopilot_agent: Agent[TicketContext, str] = Agent(
-    model="openai:gpt-4o",
-    deps_type=TicketContext,
-    system_prompt=SYSTEM_PROMPT,
-)
+def _build_agent() -> Agent[TicketContext, str]:
+    settings = get_settings()
+    provider = OpenAIProvider(
+        base_url=settings.azure_openai_endpoint or None,
+        api_key=settings.openai_api_key or None,
+    )
+    model = OpenAIModel(settings.openai_model, provider=provider)
+    return Agent(model=model, deps_type=TicketContext, system_prompt=SYSTEM_PROMPT)
+
+
+autopilot_agent: Agent[TicketContext, str] = _build_agent()
 
 
 # ---------------------------------------------------------------------------
@@ -139,6 +147,11 @@ async def run_ssh_command(ctx: RunContext[TicketContext], command: str) -> str:
         deps.runner.safety_guard.check(command)
     except SSHCommandBlockedError as exc:
         return f"BLOCKED: {exc}"
+
+    logger.info(
+        "SSH command requested chat_id=%s ticket_id=%s cmd=%r",
+        deps.chat_id, deps.ticket_id, command,
+    )
 
     # 2. Persist pending tool call
     async with AsyncSessionLocal() as db:

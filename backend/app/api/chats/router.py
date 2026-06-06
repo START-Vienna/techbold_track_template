@@ -66,8 +66,9 @@ async def stream_chat(chat_id: uuid.UUID) -> EventSourceResponse:
                 yield {"event": event_type, "data": json.dumps(event)}
         finally:
             agent_event_bus._queues.pop(chat_id, None)
+            agent_event_bus._buffers.pop(chat_id, None)
 
-    return EventSourceResponse(_generate())
+    return EventSourceResponse(_generate(), ping=0)
 
 
 @router.get(
