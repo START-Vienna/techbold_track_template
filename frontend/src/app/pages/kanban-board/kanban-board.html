@@ -18,8 +18,11 @@
             }
             <span class="kanban-card__company">{{ card.company }}</span>
             <span class="kanban-card__title">{{ card.title }}</span>
-            <span class="kanban-card__priority"
-                  [class]="'priority-' + card.priority.toLowerCase()">{{ card.priority }}</span>
+            <span
+              class="kanban-card__priority"
+              [class]="'priority-' + card.priority.toLowerCase()"
+              >{{ card.priority }}</span
+            >
             <span class="kanban-card__due-date">{{ card.dueDate }}</span>
           </div>
         }
