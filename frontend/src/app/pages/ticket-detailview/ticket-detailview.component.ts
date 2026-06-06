@@ -82,13 +82,16 @@ export class TicketDetailviewComponent implements OnInit {
 
     this.ticketService.getChats(ticketId).subscribe({
       next: (response) => {
-        this.availableChats = response.chats.map((chat) => ({
-          id: parseInt(chat.id as any),
-          name: `Chat ${chat.id}`,
-          date: new Date(chat.created_at).toLocaleDateString('de-AT'),
-          active: true,
-          content: '',
-        }));
+        this.availableChats = response.chats.map((chat) => {
+          const chatId = chat.id.toString();
+          return {
+            id: chatId,
+            name: `Chat ${chatId.substring(0, 7)}`,
+            date: new Date(chat.created_at).toLocaleDateString('de-AT'),
+            active: true,
+            content: '',
+          };
+        });
         this.loadCustomer(ticket.customer_id);
       },
       error: (err) => {
@@ -188,25 +191,25 @@ export class TicketDetailviewComponent implements OnInit {
     return result.join('\n');
   }
 
-  availableChats = [
+  availableChats: any[] = [
     {
-      id: 1,
-      name: 'Chatname',
+      id: '1',
+      name: 'Chat 1',
       date: '12.10.2020',
       active: true,
       content:
         'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam volutua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.',
     },
     {
-      id: 2,
-      name: 'Chatname 2',
+      id: '2',
+      name: 'Chat 2',
       date: '12.10.2020',
       active: true,
       content: 'Another chat content here with different information and context.',
     },
     {
-      id: 3,
-      name: 'Chatname 3',
+      id: '3',
+      name: 'Chat 3',
       date: '12.10.2020',
       active: false,
       content: 'Third chat content.',
@@ -256,10 +259,9 @@ export class TicketDetailviewComponent implements OnInit {
     let existingChat = this.openChats.find((c) => c.id === chat.id);
     if (!existingChat) {
       const messages: ChatMessage[] = [];
-      const chatId = typeof chat.id === 'string' ? chat.id : chat.id.toString();
       existingChat = {
         id: chat.id,
-        name: `Chat ${chatId.substring(0, 7)}`,
+        name: chat.name || `Chat ${String(chat.id).substring(0, 7)}`,
         date: chat.date,
         active: chat.active,
         content: chat.content || '',
@@ -319,11 +321,11 @@ export class TicketDetailviewComponent implements OnInit {
     this.cdr.markForCheck();
   }
 
-  onChatClosed(chatId: number) {
+  onChatClosed(chatId: string | number) {
     const index = this.openChats.findIndex((c) => c.id === chatId);
     if (index !== -1) {
       this.openChats.splice(index, 1);
-      if (this.activeChat.id === chatId && this.openChats.length > 0) {
+      if (this.activeChat?.id === chatId && this.openChats.length > 0) {
         this.activeChat = this.openChats[0];
       } else if (this.openChats.length === 0) {
         this.activeChat = null;
