@@ -10,7 +10,7 @@ same protocol. Reuse the plumbing; build only the graded differentiators ourselv
 | **Language / runtime** | **TypeScript + Node 20** (or Bun) | One language across agent + API + UI |
 | **App framework** | **Next.js 15 (App Router)** | Hosts the UI **and** the agent API routes **and** streaming in one app (alt: Vite React + **Hono** backend if split) |
 | **Agent framework** | **Vercel AI SDK 6** | Agent loop (`stopWhen`), tool calling, **`needsApproval` HITL**, native **MCP** |
-| **LLM** | **Anthropic Claude** via `@ai-sdk/anthropic` | Opus (plan) + Haiku (cheap probes); bring-your-own key |
+| **LLM** | **Anthropic Claude** via `@ai-sdk/anthropic` | Opus (plan) + Haiku (cheap probes); bring-your-own key; provider-agnostic — swap a local Ollama/vLLM model for the privacy story |
 | **Tool schemas / structured output** | **Zod** | Type-safe tool args + validated activity object |
 | **Approval-gate UI** | **assistant-ui** | Tool calls → cards with inline approve/edit/reject; native AI SDK integration |
 | **UI components** | **React + Tailwind + shadcn/ui** | Ticket list/detail/log, fast and clean |
