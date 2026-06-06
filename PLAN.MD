@@ -89,7 +89,7 @@ Create this modular backend structure under `backend/app/`:
   - Keep `reset_me()` available through an explicit dev/admin path only; it clears activities and reboots VMs, so it should not be part of the normal ticket flow.
 
 - `services/ssh_runner.py`
-  - Connect to the VM from `CustomerSystem.system`.
+  - Runtime implementation connects over real SSH to the VM from Phoenix `CustomerSystem.system`.
   - Use Phoenix `system.username` first; fallback to `.env` `SSH_USERNAME` only if Phoenix omits username.
   - Run exactly one technician-confirmed command per call.
   - Enforce connect timeout, command timeout, 32 KB stdout/stderr truncation per stream, exit code capture, and timeout reporting.
@@ -164,7 +164,8 @@ Create this modular backend structure under `backend/app/`:
 
 - `tests/`
   - Add lightweight core tests during MVP, then broaden after the workflow is working.
-  - Cover Phoenix client with mocked HTTP responses, safety classification/blocking rules, redaction, activity submission guards, run manager confirmation-before-SSH and approval-before-every-command behavior, WebSocket event replay, and SSH runner with mocked SSH rather than real SSH.
+  - Cover Phoenix client with mocked HTTP responses, safety classification/blocking rules, redaction, activity submission guards, run manager confirmation-before-SSH and approval-before-every-command behavior, WebSocket event replay, and SSH runner behavior through mocks.
+  - Normal tests must not require live Phoenix VMs; real SSH is used by the running app, while tests replace the SSH transport with fakes/mocks.
 
 ## Build Order
 
@@ -174,7 +175,7 @@ Create this modular backend structure under `backend/app/`:
 4. Implement `clients/phoenix.py` and ticket routes so ERP workflow A works early.
 5. Implement WebSocket event persistence/replay primitives before long-running agent work.
 6. Implement `audit_log.py` and `safety.py` before any SSH execution.
-7. Implement `ssh_runner.py` with mocked tests.
+7. Implement `ssh_runner.py` for real Phoenix-provided SSH targets, with tests that mock the SSH transport.
 8. Implement Azure OpenAI provider and planner output parsing for one-command proposals.
 9. Implement `run_manager.py` with strict state transitions, background command execution, mandatory SSH connection confirmation, mandatory per-command approval, and typed confirmations for risky commands.
 10. Implement validation evidence plus human validation confirmation, including persistence-oriented checks after relevant service restarts when safe.
