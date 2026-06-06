@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     # LLM
     openai_api_key: str = ""
     openai_model: str = "gpt-4o"
+    azure_openai_endpoint: str = ""
 
 
 @lru_cache

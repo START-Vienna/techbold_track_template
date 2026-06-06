@@ -5,6 +5,8 @@ import uuid
 from dataclasses import dataclass
 
 from pydantic_ai import Agent, RunContext
+from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.providers.openai import OpenAIProvider
 
 from ..config import get_settings
 from ..ssh.resolver import resolve_ssh_key
@@ -22,6 +24,7 @@ logger = logging.getLogger(__name__)
 class TicketContext:
     """Runtime context passed to every tool call for a specific ticket."""
 
+    chat_id: uuid.UUID
     ticket_id: int
     host: str
     port: int
@@ -56,30 +59,30 @@ Hard limits — never suggest or run:
 
 If uncertain, propose a safer diagnostic step rather than a destructive fix. \
 Document every command you run and why.
+
+After completing the diagnosis and fix, provide a detailed summary covering:
+- What the root cause was (the technical cause, not just the symptom)
+- What actions were taken in order
+- Which commands were key
+- How you validated the fix
 """
 
-autopilot_agent: Agent[TicketContext, str] = Agent(
-    model="openai:gpt-4o",
-    deps_type=TicketContext,
-    system_prompt=SYSTEM_PROMPT,
-)
+def _build_agent() -> Agent[TicketContext, str]:
+    settings = get_settings()
+    provider = OpenAIProvider(
+        base_url=settings.azure_openai_endpoint or None,
+        api_key=settings.openai_api_key or None,
+    )
+    model = OpenAIModel(settings.openai_model, provider=provider)
+    return Agent(model=model, deps_type=TicketContext, system_prompt=SYSTEM_PROMPT)
+
+
+autopilot_agent: Agent[TicketContext, str] = _build_agent()
 
 
 # ---------------------------------------------------------------------------
-# Tools
+# Runner factory
 # ---------------------------------------------------------------------------
-
-
-@autopilot_agent.tool
-def get_ticket_context(ctx: RunContext[TicketContext]) -> dict:
-    """Return the current ticket metadata and target system information. Call this first."""
-    deps = ctx.deps
-    return {
-        "ticket_id": deps.ticket_id,
-        "host": deps.host,
-        "port": deps.port,
-        "description": deps.description,
-    }
 
 
 def build_runner_for_customer(
@@ -101,53 +104,121 @@ def build_runner_for_customer(
     )
 
 
-async def start_agent(chat_id: uuid.UUID, ticket_id: str) -> None:
-    """Entry point for the autopilot agent. Not yet implemented."""
-    logger.info("start_agent called chat_id=%s ticket_id=%s", chat_id, ticket_id)
+# ---------------------------------------------------------------------------
+# Tools
+# ---------------------------------------------------------------------------
 
 
 @autopilot_agent.tool
-def run_ssh_command(ctx: RunContext[TicketContext], command: str) -> dict:
+def get_ticket_context(ctx: RunContext[TicketContext]) -> dict:
+    """Return the current ticket metadata and target system information. Call this first."""
+    deps = ctx.deps
+    return {
+        "ticket_id": deps.ticket_id,
+        "host": deps.host,
+        "port": deps.port,
+        "description": deps.description,
+    }
+
+
+@autopilot_agent.tool
+async def run_ssh_command(ctx: RunContext[TicketContext], command: str) -> str:
     """
-    Execute a shell command on the customer VM for this ticket.
+    Execute a shell command on the customer VM. Requires technician approval before running.
 
     Args:
-        command: The shell command to run. Must be safe and targeted.
+        command: Shell command to run. Must be safe and targeted.
 
     Returns:
-        A dict with keys: stdout, stderr, exit_code, duration_ms, succeeded.
-        Blocked commands return succeeded=False and blocked=True.
+        Command output (stdout/stderr/exit_code) or a rejection/error message.
     """
+    import asyncio
+    import json
+
+    from .approval_gate import approval_gate
+    from .event_bus import agent_event_bus
+    from .persistence import save_audit_log, save_message, save_tool_call, update_tool_call_status
+    from ..db.session import AsyncSessionLocal
+
     deps = ctx.deps
+
+    # 1. Safety check BEFORE any I/O
+    try:
+        deps.runner.safety_guard.check(command)
+    except SSHCommandBlockedError as exc:
+        return f"BLOCKED: {exc}"
+
     logger.info(
-        "Agent requesting SSH command ticket=%d host=%s cmd=%r",
-        deps.ticket_id, deps.host, command,
+        "SSH command requested chat_id=%s ticket_id=%s cmd=%r",
+        deps.chat_id, deps.ticket_id, command,
     )
 
-    try:
-        result: SSHResult = deps.runner.run(command)
-    except SSHCommandBlockedError as exc:
-        return {
-            "stdout": "",
-            "stderr": f"BLOCKED: {exc}",
-            "exit_code": -1,
-            "duration_ms": 0,
-            "succeeded": False,
-            "blocked": True,
-        }
-    except SSHConnectionError as exc:
-        return {
-            "stdout": "",
-            "stderr": f"CONNECTION_ERROR: {exc}",
-            "exit_code": -2,
-            "duration_ms": 0,
-            "succeeded": False,
-        }
+    # 2. Persist pending tool call
+    async with AsyncSessionLocal() as db:
+        tool_call = await save_tool_call(
+            db, deps.chat_id, "run_ssh_command", {"command": command},
+            pydantic_call_id=ctx.tool_call_id,
+        )
+        await db.commit()
 
-    return {
+    # 3. Notify frontend — technician must approve
+    await agent_event_bus.publish(deps.chat_id, {
+        "event": "tool_call_requested",
+        "tool_call_id": str(tool_call.id),
+        "tool_name": "run_ssh_command",
+        "args": {"command": command},
+    })
+
+    # 4. Block until the technician approves or rejects
+    approved = await approval_gate.request_approval(tool_call.id)
+
+    if not approved:
+        async with AsyncSessionLocal() as db:
+            await update_tool_call_status(db, tool_call.id, "rejected")
+            await db.commit()
+        return "Command rejected by technician."
+
+    # 5. Execute via sync runner in a thread
+    try:
+        result: SSHResult = await asyncio.to_thread(deps.runner.run, command)
+    except SSHConnectionError as exc:
+        async with AsyncSessionLocal() as db:
+            await update_tool_call_status(db, tool_call.id, "executed")
+            await db.commit()
+        return f"CONNECTION_ERROR: {exc}"
+
+    # 6. Persist audit log and tool result message
+    async with AsyncSessionLocal() as db:
+        audit_log = await save_audit_log(
+            db, deps.chat_id, str(deps.ticket_id), result,
+        )
+        result_msg = await save_message(
+            db, deps.chat_id, "tool",
+            json.dumps({
+                "stdout": result.stdout,
+                "stderr": result.stderr,
+                "exit_code": result.exit_code,
+            }),
+        )
+        await update_tool_call_status(
+            db, tool_call.id, "executed",
+            result_message_id=result_msg.id,
+            audit_log_id=audit_log.id,
+        )
+        await db.commit()
+
+    # 7. Notify frontend of the result
+    await agent_event_bus.publish(deps.chat_id, {
+        "event": "tool_result",
+        "tool_call_id": str(tool_call.id),
         "stdout": result.stdout,
         "stderr": result.stderr,
         "exit_code": result.exit_code,
-        "duration_ms": result.duration_ms,
-        "succeeded": result.succeeded,
-    }
+        "blocked": False,
+    })
+
+    return (
+        f"exit_code: {result.exit_code}\n"
+        f"stdout:\n{result.stdout}\n"
+        f"stderr:\n{result.stderr}"
+    )

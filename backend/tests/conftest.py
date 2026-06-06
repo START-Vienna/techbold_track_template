@@ -12,8 +12,9 @@ from __future__ import annotations
 
 import os
 
-# Set dummy OpenAI credentials to prevent initialization failures during tests
-os.environ.setdefault("OPENAI_API_KEY", "mock-key-for-testing")
+os.environ.setdefault("OPENAI_API_KEY", "sk-test-not-used")
+os.environ.setdefault("PHOENIX_API_TOKEN", "test-not-used")
+os.environ.setdefault("PHOENIX_API_BASE_URL", "http://test-not-used")
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
