@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import uuid
 from dataclasses import dataclass
 
 from pydantic_ai import Agent, RunContext
@@ -77,6 +78,11 @@ def get_ticket_context(ctx: RunContext[TicketContext]) -> dict:
         "port": deps.port,
         "description": deps.description,
     }
+
+
+async def start_agent(chat_id: uuid.UUID, ticket_id: str) -> None:
+    """Entry point for the autopilot agent. Not yet implemented."""
+    logger.info("start_agent called chat_id=%s ticket_id=%s", chat_id, ticket_id)
 
 
 @autopilot_agent.tool
