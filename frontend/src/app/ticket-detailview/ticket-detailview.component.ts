@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { ChatSelectionComponent } from '../chat-selection/chat-selection.component';
 import { ChatDetailViewComponent } from '../chat-detail-view/chat-detail-view.component';
 import { TicketLogComponent, LogEntry } from '../ticket-log/ticket-log.component';
@@ -9,9 +9,13 @@ import { TicketLogComponent, LogEntry } from '../ticket-log/ticket-log.component
   imports: [ChatSelectionComponent, ChatDetailViewComponent, TicketLogComponent],
   templateUrl: './ticket-detailview.component.html',
   styleUrl: './ticket-detailview.component.css',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TicketDetailviewComponent {
   showLogs = false;
+  leftPanelCollapsed = false;
+
+  constructor(private cdr: ChangeDetectorRef) {}
 
   availableChats = [
     { id: 1, name: 'Chatname', date: '12.10.2020', active: true, content: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam volutua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.' },
@@ -51,6 +55,7 @@ export class TicketDetailviewComponent {
 
   toggleLogs() {
     this.showLogs = !this.showLogs;
+    this.cdr.markForCheck();
   }
 
   onChatSelected(chat: any) {
@@ -59,10 +64,12 @@ export class TicketDetailviewComponent {
       this.openChats.push({ ...chat });
     }
     this.activeChat = this.openChats.find(c => c.id === chat.id);
+    this.cdr.markForCheck();
   }
 
   onChatTabSelected(chat: any) {
     this.activeChat = chat;
+    this.cdr.markForCheck();
   }
 
   onChatClosed(chatId: number) {
@@ -75,6 +82,7 @@ export class TicketDetailviewComponent {
         this.activeChat = null;
       }
     }
+    this.cdr.markForCheck();
   }
 
   onNewChatAdded() {
@@ -86,5 +94,11 @@ export class TicketDetailviewComponent {
     };
     this.openChats.push(newChat);
     this.activeChat = newChat;
+    this.cdr.markForCheck();
+  }
+
+  toggleLeftPanel() {
+    this.leftPanelCollapsed = !this.leftPanelCollapsed;
+    this.cdr.markForCheck();
   }
 }
