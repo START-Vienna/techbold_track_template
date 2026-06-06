@@ -35,20 +35,22 @@
 
       <h1 class="ticket-title">{{ ticket()!.title }}</h1>
 
-      <div class="system-info">
-        <div class="info-item">
-          <p class="info-label">SYSTEM</p>
-          <p class="info-value">UBUNTU 22.04 LTS</p>
+      @if (customer()) {
+        <div class="system-info">
+          <div class="info-item">
+            <p class="info-label">SYSTEM</p>
+            <p class="info-value">{{ customer()!.system.os }}</p>
+          </div>
+          <div class="info-item">
+            <p class="info-label">IP</p>
+            <p class="info-value">{{ customer()!.system.ip }}</p>
+          </div>
+          <div class="info-item">
+            <p class="info-label">PORT</p>
+            <p class="info-value">{{ customer()!.system.port }}</p>
+          </div>
         </div>
-        <div class="info-item">
-          <p class="info-label">IP</p>
-          <p class="info-value">10.0.0.5</p>
-        </div>
-        <div class="info-item">
-          <p class="info-label">PORT</p>
-          <p class="info-value">22</p>
-        </div>
-      </div>
+      }
 
       <button class="logs-button" (click)="toggleLogs()">
         <span class="logs-icon">
@@ -100,6 +102,7 @@
         <app-chat-selection
           [availableChats]="availableChats"
           (chatSelected)="onChatSelected($event)"
+          (createChatClicked)="onCreateChatClicked()"
         >
         </app-chat-selection>
       } @else {

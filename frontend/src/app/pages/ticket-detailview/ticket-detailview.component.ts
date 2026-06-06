@@ -10,10 +10,11 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { DomSanitizer } from '@angular/platform-browser';
 import { marked } from 'marked';
 import { ChatSelectionComponent } from '../../components/chat-selection/chat-selection.component';
-import { ChatDetailViewComponent } from '../chat-detail-view/chat-detail-view.component';
+import { ChatDetailViewComponent, ChatMessage } from '../chat-detail-view/chat-detail-view.component';
 import { TicketLogComponent, LogEntry } from '../../components/ticket-log/ticket-log.component';
 import { TicketService } from '../../services/ticket.service';
 import { Ticket } from '../../types/ticket';
+import { Customer } from '../../types/customer';
 
 @Component({
   selector: 'app-ticket-detailview',
@@ -28,6 +29,7 @@ export class TicketDetailviewComponent implements OnInit {
   leftPanelCollapsed = false;
 
   ticket = signal<Ticket | null>(null);
+  customer = signal<Customer | null>(null);
   renderedDescription = signal<string>('');
   isLoading = signal(true);
   error = signal<string | null>(null);
@@ -58,15 +60,54 @@ export class TicketDetailviewComponent implements OnInit {
         if (ticket) {
           this.ticket.set(ticket);
           this.renderMarkdown(ticket.description);
+          this.loadChats(ticketId);
         } else {
           this.error.set('Ticket not found');
+          this.isLoading.set(false);
+          this.cdr.markForCheck();
         }
-        this.isLoading.set(false);
-        this.cdr.markForCheck();
       },
       error: (err) => {
         this.error.set('Failed to load ticket');
         console.error('Error loading ticket:', err);
+        this.isLoading.set(false);
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  private loadChats(ticketId: string): void {
+    const ticket = this.ticket();
+    if (!ticket) return;
+
+    this.ticketService.getChats(ticketId).subscribe({
+      next: (response) => {
+        this.availableChats = response.chats.map((chat) => ({
+          id: parseInt(chat.id as any),
+          name: `Chat ${chat.id}`,
+          date: new Date(chat.created_at).toLocaleDateString('de-AT'),
+          active: true,
+          content: '',
+        }));
+        this.loadCustomer(ticket.customer_id);
+      },
+      error: (err) => {
+        console.error('Error loading chats:', err);
+        this.isLoading.set(false);
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  private loadCustomer(customerId: number): void {
+    this.ticketService.getCustomer(customerId).subscribe({
+      next: (customer) => {
+        this.customer.set(customer);
+        this.isLoading.set(false);
+        this.cdr.markForCheck();
+      },
+      error: (err) => {
+        console.error('Error loading customer:', err);
         this.isLoading.set(false);
         this.cdr.markForCheck();
       },
@@ -248,6 +289,49 @@ export class TicketDetailviewComponent implements OnInit {
     this.openChats.push(newChat);
     this.activeChat = newChat;
     this.cdr.markForCheck();
+  }
+
+  onCreateChatClicked() {
+    const ticket = this.ticket();
+    if (!ticket) return;
+
+    this.ticketService.createChat(ticket.id.toString()).subscribe({
+      next: (response) => {
+        const messages: ChatMessage[] = [];
+        const newChat = {
+          id: parseInt(response.id),
+          name: `Chat ${response.id}`,
+          date: new Date(response.created_at).toLocaleDateString('de-AT'),
+          active: true,
+          content: '',
+          eventSource: this.ticketService.streamChat(response.id),
+          messages,
+        };
+
+        this.openChats.push(newChat);
+        this.activeChat = newChat;
+
+        // Subscribe to stream events
+        newChat.eventSource.addEventListener('message', (event) => {
+          const data = JSON.parse(event.data);
+          newChat.messages.push({
+            id: Math.random().toString(),
+            content: data.content || data.message || '',
+            thinkingProcess: data.thinking || '',
+          });
+          this.cdr.markForCheck();
+        });
+
+        newChat.eventSource.addEventListener('error', () => {
+          newChat.eventSource?.close();
+        });
+
+        this.cdr.markForCheck();
+      },
+      error: (err) => {
+        console.error('Error creating chat:', err);
+      },
+    });
   }
 
   toggleLeftPanel() {
