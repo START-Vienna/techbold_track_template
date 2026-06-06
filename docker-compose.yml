@@ -46,6 +46,8 @@ services:
       - "80:80"
     depends_on:
       - backend
+    networks:
+      - techbold
 
 volumes:
   postgres_data:
