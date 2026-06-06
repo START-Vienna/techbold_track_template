@@ -470,6 +470,29 @@ Role-specific system prompts (sketch):
 
 ---
 
+## 10b. Additions folded from `minam` — human control, reliability hardening, diagnostic depth
+
+These extend §3/§4/§8/§10; full detail in [RELIABILITY.md](./RELIABILITY.md) + [AGENT_PIPELINE.md](./AGENT_PIPELINE.md).
+
+**Human-control endpoints + events (G1/G3/G11/G4):**
+- `POST /api/runs/:id/manual-command` — human-typed command → same safety classify+redact+audit → executed → fed back as an observation. Emits `manual.command.executed`.
+- `POST /api/runs/:id/undo` — revert the last change via the captured rollback; re-run the benefit test. Emits `command.undone`.
+- `POST /api/runs/:id/questions/:qid/answer` + an `agent.question` event — agent→human question channel.
+- Read-only diagnostics may be batched into one **plan-approval**; every mutation stays individually gated.
+
+**SSH / reliability hardening (counters the documented top failure modes — see RELIABILITY.md §1,§4):**
+- Run each command via **`bash -lc '<cmd>'`** (login PATH) — defeats the #1 Terminal-Bench failure ("command not in PATH", ~24% of failures). Absolute paths for system binaries.
+- **`sudo -n`** (non-interactive) — never hang on a TTY password prompt; treat "needs password" as data and surface it.
+- **Exit code is truth; stderr ≠ failure** — judge success by exit code + the expected signal (many tools write to stderr on success).
+- **Tool-availability preflight** — the first read-only batch probes OS + which tools exist + sudo capability; the agent then uses only present tools.
+- **Output budgeting** — store full output in the DB; feed the model a capped **digest** + extracted signal lines (prevents context collapse after ~turn 10). Set `LANG=C` for stable parsing.
+
+**`read_local_docs` tool** — on-box `man`/`--help`/`systemctl cat`/config reads (zero egress) so the agent understands unfamiliar services without web search. (Optional guarded web search is P2 — advisory-only, outbound-sanitized, audited.)
+
+**Unknown-error method:** the diagnostics role runs a **ground-truth enrichment sweep** (failed units, journal errors, listeners, resources, what-changed) before hypothesizing, then follows the causal chain inward via the system's own error channels. Full method in [AGENT_PIPELINE.md](./AGENT_PIPELINE.md).
+
+---
+
 ## 11. Research notes / sources
 - **Official techbold case brief** — agent names, incident scope (local Linux services only),
   diagnosis-first ranked-hypotheses pattern, two-evaluation structure, core-3 ERP endpoints.

@@ -355,6 +355,26 @@ The official techbold case brief is now incorporated (see §0). **Verified from 
 
 ---
 
+## 13b. Additions folded from the `minam` branch (net-new — see RELIABILITY.md, AGENT_PIPELINE.md)
+
+**Verified live this session** (resolves several §13 "still-to-confirm" items with hard data):
+- **Phoenix is LIVE** at `http://68.210.101.85:8000` (plain HTTP) — `/health`=200, `/api/v1/me`=401 without a token.
+- The live mock **does expose the full endpoint set** (`/me`, ticket-detail, `/customers/{id}`, status-PATCH, `/activities/create`, `/me/reset`) — not just the core three. It also has an **admin/judge console** (`/api/admin/*`) and a **mode** switch (`run-status` enum incl. `TESTING`): `/me/tickets` returns *the team's current-mode* tickets, so grading swaps mode to fresh hidden incidents → **consume `/me/tickets`, never hardcode.**
+- ⚠️ **SSH `.pem` is not yet in `keys/`** (only `.gitkeep`) — a hard blocker for VM work until placed.
+- ❓ **Passwordless sudo for `azureuser`** is still unconfirmed — preflight `sudo -n true` on first VM access (many fixes depend on it).
+
+**Human-control surface (the human leads, the AI assists).** Beyond approve/edit/reject/abort, add to §9:
+- `POST /api/runs/:id/manual-command {command}` — technician runs their **own** command (same safety + audit path; the AI observes) — unsticks/overrides the agent (G1).
+- `POST /api/runs/:id/undo` — one-click revert of the last change via the captured rollback, re-tests no-regression (G3).
+- `POST /api/runs/:id/questions/:qid/answer {answer}` + an `agent.question` SSE event — the agent asks instead of guessing ("need sudo?") (G11).
+- **Plan-approval for read-only batches** — show diagnostics as one reviewable plan (each still audited); every mutation individually gated; Stop always visible (G4). Satisfies "visible plan + confirm" without approval fatigue.
+
+**Validation honesty (G2):** proof is the customer-benefit test, never `systemctl is-active`; for **intermittent** symptoms (this PRD's own "API intermittently unavailable" example) repeat the test over an interval and fix the *cause of intermittency* — a single green → `LIKELY_FIXED`, not `VERIFIED_FIXED`.
+
+Full failure-mode analysis + the verified diagnose→repair→validate protocol are in **[RELIABILITY.md](./RELIABILITY.md)**; the phase-by-phase agent behavior incl. the **unknown-error first-principles method** is in **[AGENT_PIPELINE.md](./AGENT_PIPELINE.md)**.
+
+---
+
 ## 14. Research notes / sources
 
 - **Official techbold case brief** (START Hack Vienna '26) — incorporated throughout (§0, §2, §13).

@@ -123,6 +123,26 @@ Legend: `[ ]` todo · Owner `@___` · Diff `S<2h / M~half-day / L~day` · Dep = 
 
 ---
 
+## P0/P1 — human-control & reliability gaps (folded from `minam` — see REVIEW.md, RELIABILITY.md, AGENT_PIPELINE.md)
+
+P0 — make it the tool a sysadmin actually trusts:
+- [ ] **P0-G1 Human-driven command path** — Owner `@___` · M · Dep: P0-7,P0-11 — `POST /runs/:id/manual-command`: human types own command → safety classify → execute → audit (`actor:technician`) → fed to agent as observation; UI "run my own command" box. (Human leads; AI observes.)
+- [ ] **P0-G2 Symptom-matched validation** — Owner `@___` · S · Dep: P0-13 — proof = benefit test (never `is-active`); intermittent symptoms repeat over an interval; single success → `LIKELY_FIXED`. (Rubric B — fix-works/persists)
+- [ ] **P0-G3 One-click verified Undo** — Owner `@___` · M · Dep: P0-13 — `POST /runs/:id/undo` reverts last change via rollback, re-tests no-regression; always-visible Undo. (Rubric C/D)
+- [ ] **P0-G4 Plan-approval for read-only batches** — Owner `@___` · S · Dep: P0-11 — one-click approve a read-only plan (each still audited); every mutation individually gated; Stop always visible. (Rubric C/D, anti-fatigue)
+- [ ] **P0-G5 SSH executor hardening + tool preflight** — Owner `@___` · S · Dep: P0-7 — `bash -lc` PATH, `sudo -n`, exit-code-truth, `LANG=C`, output digest; first-step OS/tools/sudo preflight. (Rubric B reliability — see RELIABILITY.md)
+- [ ] **P0-G6 Policy auto-approve mode (R0)** — Owner `@___` · S · Dep: P0-11 — auto-confirm SAFE_READ_ONLY, hard-block DENY; platform completes a run unattended (confirm grading flow with mentors).
+
+P1:
+- [ ] **P1-G7 Agent→human question channel** — `agent.question` event + answer endpoint (agent asks vs guesses, e.g. needs sudo).
+- [ ] **P1-G8 Dry-run + redacted diff before mutate** — `nginx -t`/`apt-get -s` + redacted config diff on the approval card.
+- [ ] **P1-G9 Blast-radius on approval card** — dependents + active connections before a restart/stop.
+- [ ] **P1-G10 `read_local_docs` tool** — on-box man/--help/config (zero egress) for unfamiliar services.
+- [ ] **P1-G11 Ground-truth enrichment sweep + unknown-error method** — per AGENT_PIPELINE.md (broad read-only sweep → follow the causal chain inward). (Rubric B — generalization)
+- [ ] **P1-G12 Idempotency pre-check + cause-not-mask + multi-fault** — skip if already-desired; grader-mirror asks "cause or band-aid?"; re-enrich if still broken. (Rubric B)
+
+---
+
 ## Submission (do NOT skip — hard deadline Sun Jun 7, 14:00)
 
 - [ ] **SUB-1 README** — Owner `@___` · S · Dep: P0-16 — setup/run/env/architecture/assumptions/troubleshooting (Rubric E, 3 pts).

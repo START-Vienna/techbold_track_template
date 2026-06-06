@@ -46,6 +46,26 @@ VITE_API_BASE=http://localhost:8000              # frontend → our backend
 Add the new keys to `.env.example` (placeholders only — no secrets). `env.ts` parses these through
 Zod and fails fast with a clear message if one is missing.
 
+### 1b. Verified env + reliability hardening (folded from `minam` — see [RELIABILITY.md](./RELIABILITY.md))
+
+- **Phoenix is LIVE & verified** at `http://68.210.101.85:8000` (already set above; plain HTTP, **not https**).
+  `/health`=200; `/api/v1/me`=401 without the token. The live mock exposes the **full** endpoint set + an
+  admin/judge console with a **mode** switch — `/me/tickets` returns current-mode tickets, so **never hardcode**.
+- ⚠️ Put the **SSH `.pem` in `keys/`** before any VM work (the folder ships with only `.gitkeep`).
+- Add a **policy auto-approve mode** (e.g. `AUTO_APPROVE=safe`): auto-confirms `SAFE_READ_ONLY`, still
+  hard-blocks DENY — so the platform can run **unattended during automated grading** (risk R0; confirm the
+  grading flow with mentors) while the live demo shows full manual control.
+
+**SSH executor must (Phase E hardening — this is what makes it actually work on fresh VMs):**
+- run commands as **`bash -lc '<cmd>'`** (login PATH; defeats the #1 "command not in PATH" failure); set `LANG=C`.
+- use **`sudo -n`** (non-interactive) and surface "needs password" instead of hanging on a TTY prompt.
+- judge success by **exit code + expected signal**, not by stderr being non-empty.
+- store full output in the DB but return a **capped digest** to the model (avoids context collapse after ~turn 10).
+- run a **tool-availability + sudo preflight** as the very first read-only step on each VM.
+
+See the pre-build reliability checklist in [RELIABILITY.md](./RELIABILITY.md) §7, and the full agent behavior
+(incl. the unknown-error first-principles method) in [AGENT_PIPELINE.md](./AGENT_PIPELINE.md).
+
 ---
 
 ## 2. Migration: Python/FastAPI backend → TypeScript/Hono

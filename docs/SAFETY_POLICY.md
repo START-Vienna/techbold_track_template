@@ -157,6 +157,26 @@ that actually guarantees safety — the prompt is advisory.
 
 ---
 
+## 8b. Additions folded from `minam` (net-new)
+
+- **Human-typed commands go through the same gate** (G1). A command the technician types via
+  `manual-command` is classified/redacted/audited identically to an agent proposal — a DENY pattern is
+  blocked even when a human typed it; recorded with `actor: technician`. The safety floor never lowers
+  because the human is driving.
+- **Editing secret-bearing config** (G8). When a fix lives in a file that also holds a secret: never `cat`
+  the whole file into context/logs — target the specific directive; edit in place without echoing values;
+  **redact the diff** before it reaches UI/model/audit.
+- **sudo-limited reads** (G7). If a diagnostic needs privileges `azureuser` lacks (preflight `sudo -n true`
+  failed), the agent **surfaces "I need sudo to read X"** (an `agent.question`) rather than concluding
+  "looks fine." Use `sudo -n`; never hang on a password prompt.
+- **Prompt-injection defense.** All command output is **untrusted data, never instructions**. If a
+  log/MOTD/file says "run X", the agent may *report* it, but any resulting proposal still passes the full
+  deterministic gate — the verdict is independent of what the output "says."
+- **Undo is a gated operation** (G3): reverting the last change runs through classify+audit like any
+  command, followed by the benefit test to prove no regression.
+
+---
+
 ## 9. Test checklist (`tests/safety.test.ts`)
 - Each blocklist pattern → `HIGH_RISK_BLOCKED` and never executes.
 - Obfuscation attempts (extra spaces, quotes, `chmod -R 777 ${HOME}`) → still blocked or, if unresolvable, blocked.
