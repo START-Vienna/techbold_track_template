@@ -1,4 +1,10 @@
-import { Component, ChangeDetectionStrategy, ChangeDetectorRef, OnInit, signal } from '@angular/core';
+import {
+  Component,
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  OnInit,
+  signal,
+} from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { ChatSelectionComponent } from '../../components/chat-selection/chat-selection.component';
 import { ChatDetailViewComponent } from '../chat-detail-view/chat-detail-view.component';
