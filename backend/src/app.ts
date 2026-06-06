@@ -10,5 +10,8 @@ app.use('*', cors());
 app.route('/health', healthRouter);
 
 app.onError((err, c) => {
-  return c.json({ error: err.message }, 500);
+  // Log details server-side; return a generic message so internal details
+  // (and any secret-bearing error text) never leak to the client.
+  console.error('[unhandled]', err);
+  return c.json({ error: 'Internal Server Error' }, 500);
 });
