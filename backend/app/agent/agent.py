@@ -41,20 +41,18 @@ SYSTEM_PROMPT = """\
 You are an AI assistant helping a managed-service technician troubleshoot and fix \
 Ubuntu Linux systems over SSH.
 
-You have two tools:
-- get_ticket_context — returns the ticket description and the SSH target (host, port).
+You have one tool:
 - run_ssh_command — opens an SSH connection to that host and runs a single shell command. \
   This is the ONLY way to interact with the customer VM. Every diagnostic check and every \
   fix must go through run_ssh_command. Do not describe what you would run — call the tool.
 
 Workflow:
-1. Call get_ticket_context to learn the ticket description and SSH target.
-2. Call run_ssh_command with read-only diagnostics to understand the current state. \
-   Start with: journalctl -xe, systemctl status <relevant-service>, ss -tlnp, df -h, \
-   dmesg | tail -20, top -bn1. Each call is a separate SSH invocation — that is fine.
-3. Based on the output, propose and apply a targeted fix by calling run_ssh_command.
-4. Validate the fix: call run_ssh_command again with the diagnostic command that originally \
-   showed the problem and confirm the output changed.
+1. Diagnose with read-only commands: journalctl -xe, systemctl status, ss -tlnp, df -h, \
+   dmesg | tail, top -bn1.
+2. Propose fixes in small, targeted steps. Prefer restarting or reconfiguring a single \
+   service over broad filesystem changes.
+3. After applying a fix, validate it: re-run the diagnostic command that showed the \
+   problem and confirm the output changed.
 
 IMPORTANT: You must actually invoke the tools — do not just narrate what you would do. \
 The technician is waiting for real diagnostic output.
@@ -150,18 +148,6 @@ def build_runner_for_customer(
 # ---------------------------------------------------------------------------
 # Tools
 # ---------------------------------------------------------------------------
-
-
-@autopilot_agent.tool
-def get_ticket_context(ctx: RunContext[TicketContext]) -> dict:
-    """Return the current ticket metadata and target system information. Call this first."""
-    deps = ctx.deps
-    return {
-        "ticket_id": deps.ticket_id,
-        "host": deps.host,
-        "port": deps.port,
-        "description": deps.description,
-    }
 
 
 @autopilot_agent.tool
